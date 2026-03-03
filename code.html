@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus Predictive Analytics Chatbot</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .chat-bubble-user { background-color: #3B82F6; color: white; }
+    .chat-bubble-bot { background-color: #F3F4F6; color: #111827; }
+    .quick-reply-btn { transition: all 0.18s ease-in-out; }
+    .quick-reply-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
+    #chat-container { height: calc(100vh - 260px); }
+    .fade-in { animation: fadein .25s ease-out both; }
+    @keyframes fadein { from {opacity: 0; transform: translateY(6px);} to {opacity: 1; transform: translateY(0);} }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-indigo-50 to-blue-100 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-5xl mx-auto bg-white/80 backdrop-blur rounded-3xl shadow-2xl ring-1 ring-black/5 flex flex-col h-[95vh]">
+    <!-- Header -->
+    <header class="relative overflow-hidden rounded-t-3xl">
+      <div class="absolute inset-0 bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600"></div>
+      <div class="relative p-6 md:p-7 text-white">
+        <h1 class="text-2xl md:text-3xl font-extrabold text-center tracking-tight">Campus Insight Assistant</h1>
+        <p class="text-center text-sm md:text-base opacity-90">Predictive Analytics for Student Support & Campus Maintenance</p>
+        <div class="mt-4 flex items-center justify-center gap-2 text-xs md:text-sm">
+          <span class="px-2 py-1 rounded-full bg-white/15">AI Chat</span>
+          <span class="px-2 py-1 rounded-full bg-white/15">Forecasting</span>
+          <span class="px-2 py-1 rounded-full bg-white/15">Anomaly Detection</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-4 md:p-6 overflow-y-auto" id="chat-container">
+      <div id="chat-messages" class="space-y-4">
+        <!-- Initial Bot Message -->
+        <div class="flex items-start gap-3 fade-in">
+          <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xl">C</div>
+          <div class="chat-bubble-bot p-4 rounded-2xl max-w-2xl shadow-sm">
+            <p class="font-semibold mb-2">Welcome! 🎓</p>
+            <p>I'm the Campus Insight Assistant. I can help with:</p>
+            <ul class="list-disc list-inside mt-2 space-y-1">
+              <li><strong>Student Support:</strong> Identify at-risk students & wellness concerns.</li>
+              <li><strong>Campus Maintenance:</strong> Predict failures & optimize resources.</li>
+              <li><strong>Campus Events:</strong> Forecast attendance & analyze feedback.</li>
+            </ul>
+            <p class="mt-2">Which area would you like to explore?</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Typing Indicator -->
+    <div id="typing" class="hidden px-6 -mt-3 text-sm text-gray-500">Campus AI is typing<span class="animate-pulse">…</span></div>
+
+    <!-- Quick Replies & Input -->
+    <footer class="p-4 md:p-6 border-t border-gray-200 bg-gray-50 rounded-b-3xl">
+      <div id="quick-replies" class="flex flex-wrap gap-3 mb-4 justify-center"></div>
+      <div class="flex items-center gap-3">
+        <input type="text" id="user-input" class="flex-1 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-sm" placeholder="Type your message or choose an option…" />
+        <button id="send-btn" class="bg-blue-600 text-white px-5 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm">Send</button>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const chatMessages = document.getElementById('chat-messages');
+    const userInput = document.getElementById('user-input');
+    const quickRepliesContainer = document.getElementById('quick-replies');
+    const typingEl = document.getElementById('typing');
+    const sendBtn = document.getElementById('send-btn');
+
+    // --- Event Listeners ---
+    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+    sendBtn.addEventListener('click', sendMessage);
+
+    // Initial quick replies
+    showMainQuickReplies();
+
+    // --- Core Chat Functions ---
+    function sendMessage() {
+      const messageText = userInput.value.trim();
+      if (!messageText) return;
+      appendMessage('user', escapeHTML(messageText));
+      userInput.value = '';
+      processUserMessage(messageText);
+    }
+
+    function handleQuickReply(text) {
+      appendMessage('user', escapeHTML(text));
+      processUserMessage(text);
+    }
+
+    function appendMessage(sender, html) {
+      const messageDiv = document.createElement('div');
+      const bubbleClass = sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot';
+      const alignment = sender === 'user' ? 'justify-end' : 'justify-start';
+      const avatar = sender === 'user'
+        ? `<div class="w-10 h-10 rounded-full bg-gray-400 flex items-center justify-center text-white font-bold text-xl">U</div>`
+        : `<div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xl">C</div>`;
+
+      messageDiv.className = `flex items-start gap-3 ${alignment} fade-in`;
+
+      const messageContent = `
+        <div class="${bubbleClass} p-4 rounded-2xl max-w-2xl shadow-sm">
+          ${html}
+        </div>
+      `;
+
+      messageDiv.innerHTML = sender === 'user' ? `${messageContent}${avatar}` : `${avatar}${messageContent}`;
+      chatMessages.appendChild(messageDiv);
+      // Smooth scroll to bottom
+      messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    function showTyping(show = true) {
+      typingEl.classList.toggle('hidden', !show);
+    }
+
+    // --- Router ---
+    function processUserMessage(message) {
+      const lower = message.toLowerCase();
+      quickRepliesContainer.innerHTML = '';
+      showTyping(true);
+
+      setTimeout(() => {
+        showTyping(false);
+        if (lower.includes('student support')) return botResponseStudentSupport();
+        if (lower.includes('campus maintenance')) return botResponseCampusMaintenance();
+        if (lower.includes('campus events')) return botResponseCampusEvents();
+
+        if (lower.includes('at-risk')) return botResponseAtRiskStudents();
+        if (lower.includes('intervention')) return botResponseIntervention();
+        if (lower.includes('wellness')) return botResponseWellnessCheck();
+        if (lower.includes('resources')) return botResponseResourceRecs();
+
+        if (lower.includes('hvac')) return botResponseHVAC();
+        if (lower.includes('schedule')) return botResponseScheduleMaintenance();
+        if (lower.includes('utility')) return botResponseUtilityUsage();
+        if (lower.includes('custodial')) return botResponseCustodial();
+
+        if (lower.includes('event details')) return botResponseEventDetails();
+        if (lower.includes('parking')) return botResponseParking();
+        if (lower.includes('feedback')) return botResponseFeedback();
+
+        if (lower.includes('hello') || lower.includes('hi')) {
+          appendMessage('bot', 'Hello! How can I assist you today? Please choose from the main topics.');
+          return showMainQuickReplies();
+        }
+        appendMessage('bot', "I'm not sure how to respond to that. Please try one of the options below.");
+        showMainQuickReplies();
+      }, 600);
+    }
+
+    // --- Quick Replies ---
+    function showQuickReplies(replies) {
+      quickRepliesContainer.innerHTML = '';
+      replies.forEach((reply) => {
+        const button = document.createElement('button');
+        button.textContent = reply.text;
+        let colorClasses = 'bg-gray-200 text-gray-800';
+        if (reply.color === 'blue') colorClasses = 'bg-blue-100 text-blue-800';
+        if (reply.color === 'green') colorClasses = 'bg-green-100 text-green-800';
+        if (reply.color === 'purple') colorClasses = 'bg-purple-100 text-purple-800';
+        button.className = `quick-reply-btn ${colorClasses} px-4 py-2 rounded-full font-medium`;
+        button.onclick = () => {
+          if (reply.action === 'main') { showMainQuickReplies(); appendMessage('bot', 'How else can I help you?'); }
+          else { handleQuickReply(reply.action); }
+        };
+        quickRepliesContainer.appendChild(button);
+      });
+    }
+
+    function showMainQuickReplies() {
+      const mainReplies = [
+        { text: 'Student Support', action: 'student support', color: 'blue' },
+        { text: 'Campus Maintenance', action: 'campus maintenance', color: 'green' },
+        { text: 'Campus Events', action: 'campus events', color: 'purple' }
+      ];
+      quickRepliesContainer.innerHTML = '';
+      mainReplies.forEach((reply) => {
+        const button = document.createElement('button');
+        button.textContent = reply.text;
+        const colorClasses = `bg-${reply.color}-100 text-${reply.color}-800`;
+        button.className = `quick-reply-btn ${colorClasses} px-4 py-2 rounded-full font-medium`;
+        button.onclick = () => handleQuickReply(reply.action);
+        quickRepliesContainer.appendChild(button);
+      });
+    }
+
+    // --- BOT RESPONSES ---
+    // Helper: mini progress bar for predictive computations
+    function showProgressBar(label = 'Running predictive model…') {
+      const id = 'pb-' + Math.random().toString(36).slice(2);
+      const html = `
+        <div id="${id}" class="w-full max-w-sm">
+          <div class="text-xs text-gray-600 mb-1">${label}</div>
+          <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-2 bg-blue-600 w-0 animate-[grow_1.2s_ease-in-out_forwards] rounded-full"></div>
+          </div>
+        </div>
+      `;
+      const style = document.createElement('style');
+      style.textContent = `@keyframes grow { to { width: 100%; } }`;
+      document.head.appendChild(style);
+      appendMessage('bot', html);
+      return id;
+    }
+
+    // === Student Support ===
+    function botResponseStudentSupport() {
+      appendMessage('bot', `
+        <p class="font-semibold">🎯 Student Support Analytics</p>
+        <p>We analyze academic performance, wellness indicators, and resource engagement.</p>
+        <p class="mt-2">What would you like to do?</p>
+      `);
+      showQuickReplies([
+        { text: 'Show at-risk students', action: 'at-risk', color: 'blue' },
+        { text: 'Mental Wellness Check', action: 'wellness', color: 'blue' },
+        { text: 'Resource Recommendations', action: 'resources', color: 'blue' },
+        { text: 'Back to main menu', action: 'main', color: 'gray' }
+      ]);
+    }
+
+    function botResponseAtRiskStudents() {
+      const pb = showProgressBar('Scoring students for risk levels…');
+      setTimeout(() => {
+        const students = [
+          { id: 'S4568', risk: 'High', factors: 'Low attendance; falling grades in 2 courses' },
+          { id: 'S7891', risk: 'Medium', factors: 'Decreased library access; late submissions' },
+          { id: 'S1022', risk: 'Low', factors: 'Slight dip in weekly study hours' },
+        ];
+        const rows = students.map(s => `
+          <tr class="border-b">
+            <td class="p-2 font-mono">${s.id}</td>
+            <td class="p-2 font-semibold ${s.risk === 'High' ? 'text-red-600' : (s.risk === 'Medium' ? 'text-yellow-600' : 'text-green-600')}">${s.risk}</td>
+            <td class="p-2">${s.factors}</td>
+          </tr>`).join('');
+        appendMessage('bot', `
+          <p class="font-semibold">📈 Predicted At-Risk Students (This Week)</p>
+          <div class="overflow-hidden rounded-xl ring-1 ring-gray-200 mt-2">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-gray-100">
+                <tr><th class="p-2">Student ID</th><th class="p-2">Risk Level</th><th class="p-2">Key Factors</th></tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `);
+        showQuickReplies([
+          { text: 'Suggest intervention plan', action: 'intervention', color: 'blue' },
+          { text: 'Back to student support', action: 'student support', color: 'blue' },
+        ]);
+      }, 800);
+    }
+
+    function botResponseIntervention() {
+      appendMessage('bot', `
+        <p class="font-semibold">🧭 Recommended Intervention Plan for High-Risk Students</p>
+        <ol class="list-decimal list-inside mt-2 space-y-1">
+          <li><strong>Immediate:</strong> Schedule advisor meeting within 48 hours.</li>
+          <li><strong>Short-Term:</strong> Enroll in peer-tutoring for affected subjects.</li>
+          <li><strong>Monitoring:</strong> Weekly check-ins to track attendance & grades.</li>
+        </ol>
+      `);
+      showQuickReplies([
+        { text: 'Show at-risk students', action: 'at-risk', color: 'blue' },
+        { text: 'Back to student support', action: 'student support', color: 'blue' },
+      ]);
+    }
+
+    function botResponseWellnessCheck() {
+      appendMessage('bot', `
+        <p class="font-semibold">💙 Mental Wellness Flags</p>
+        <p>Detected anomalies indicating possible stress (late-night library entries, cafeteria usage drop).</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><strong>Student S0987:</strong> Significant drop in social space usage.</li>
+          <li><strong>Student S5543:</strong> Erratic meal plan usage.</li>
+        </ul>
+      `);
+      showQuickReplies([
+        { text: 'Recommend Resources', action: 'resources', color: 'blue' },
+        { text: 'Back to student support', action: 'student support', color: 'blue' },
+      ]);
+    }
+
+    function botResponseResourceRecs() {
+      appendMessage('bot', `
+        <p class="font-semibold">🧰 Automated Resource Recommendations</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li>Falling grades (writing-heavy): <strong>Campus Writing Center</strong></li>
+          <li>Wellness concerns: <strong>Counseling & Psychological Services (CAPS)</strong></li>
+          <li>Low library usage: <strong>Research Librarian 1:1</strong></li>
+        </ul>
+      `);
+      showQuickReplies([
+        { text: 'Show at-risk students', action: 'at-risk', color: 'blue' },
+        { text: 'Mental Wellness Check', action: 'wellness', color: 'blue' },
+      ]);
+    }
+
+    // === Campus Maintenance ===
+    function botResponseCampusMaintenance() {
+      appendMessage('bot', `
+        <p class="font-semibold">🏗️ Campus Maintenance Analytics</p>
+        <p>Predict equipment failures and optimize utility & custodial resources.</p>
+        <p class="mt-2">What would you like to see?</p>
+      `);
+      showQuickReplies([
+        { text: 'Check HVAC system status', action: 'hvac', color: 'green' },
+        { text: 'Utility Usage Prediction', action: 'utility', color: 'green' },
+        { text: 'Custodial Staffing', action: 'custodial', color: 'green' },
+        { text: 'Back to main menu', action: 'main', color: 'gray' }
+      ]);
+    }
+
+    function botResponseHVAC() {
+      const pb = showProgressBar('Analyzing sensor logs for HVAC health…');
+      setTimeout(() => {
+        const hvacUnits = [
+          { id: 'HVAC-LIB-01', status: 'Warning', prediction: 'Filter clog likely in 5–7 days. Efficiency down 15%.' },
+          { id: 'HVAC-DORM-A-05', status: 'Critical', prediction: 'Compressor failure predicted within 48 hours. Immediate inspection required.' }
+        ];
+        const rows = hvacUnits.map(h => `
+          <tr class="border-b">
+            <td class="p-2 font-mono">${h.id}</td>
+            <td class="p-2 font-semibold ${h.status === 'Critical' ? 'text-red-600' : 'text-yellow-600'}">${h.status}</td>
+            <td class="p-2">${h.prediction}</td>
+          </tr>`).join('');
+        appendMessage('bot', `
+          <p class="font-semibold">🛠️ Predictive Status of HVAC Units</p>
+          <div class="overflow-hidden rounded-xl ring-1 ring-gray-200 mt-2">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-gray-100">
+                <tr><th class="p-2">Unit ID</th><th class="p-2">Status</th><th class="p-2">Prediction</th></tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `);
+        showQuickReplies([
+          { text: 'Generate maintenance schedule', action: 'schedule', color: 'green' },
+          { text: 'Back to campus maintenance', action: 'campus maintenance', color: 'green' },
+        ]);
+      }, 900);
+    }
+
+    function botResponseScheduleMaintenance() {
+      appendMessage('bot', `
+        <p class="font-semibold">📅 Generated Preventive Maintenance Schedule</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><strong>Today:</strong> Inspect <code>HVAC-DORM-A-05</code> (Critical alert).</li>
+          <li><strong>This Week:</strong> Replace filter for <code>HVAC-LIB-01</code>.</li>
+        </ul>
+      `);
+      showQuickReplies([
+        { text: 'Check HVAC system status', action: 'hvac', color: 'green' },
+        { text: 'Back to campus maintenance', action: 'campus maintenance', color: 'green' },
+      ]);
+    }
+
+    function botResponseUtilityUsage() {
+      // Mini bar chart using simple divs
+      const series = [
+        { label: 'Electricity', value: 110, note: '10% spike due to heatwave' },
+        { label: 'Water', value: 115, note: 'Zone 3 15% above norm → possible leak' },
+      ];
+      const bars = series.map(s => `
+        <div class="mb-3">
+          <div class="flex items-center justify-between text-sm"><span class="font-medium">${s.label}</span><span>${s.value}%</span></div>
+          <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-3 bg-blue-600 rounded-full" style="width:${Math.min(s.value,130)}%"></div>
+          </div>
+          <div class="text-xs text-gray-600 mt-1">${s.note}</div>
+        </div>
+      `).join('');
+
+      appendMessage('bot', `
+        <p class="font-semibold">🔌 Utility Usage Forecast</p>
+        <div class="mt-2">${bars}</div>
+        <p class="mt-2 text-sm"><strong>Tip:</strong> Pre-cool buildings during off-peak hours to shave peak load.</p>
+      `);
+      showQuickReplies([
+        { text: 'Check HVAC status', action: 'hvac', color: 'green' },
+        { text: 'Back to campus maintenance', action: 'campus maintenance', color: 'green' },
+      ]);
+    }
+
+    function botResponseCustodial() {
+      appendMessage('bot', `
+        <p class="font-semibold">🧽 Custodial Staffing Suggestions</p>
+        <p>Based on class schedules and event calendars:</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><strong>High Traffic:</strong> Student Union, 11:00–14:00 → allocate +1 staff.</li>
+          <li><strong>Low Traffic:</strong> Athletics building Wednesday → reduce cleaning to bi-daily.</li>
+        </ul>
+      `);
+      showQuickReplies([
+        { text: 'Utility Usage Prediction', action: 'utility', color: 'green' },
+        { text: 'Back to campus maintenance', action: 'campus maintenance', color: 'green' },
+      ]);
+    }
+
+    // === Campus Events ===
+    function botResponseCampusEvents() {
+      const events = [
+        { name: 'Career Fair', date: 'Oct 25', predicted: 850, capacity: 1000 },
+        { name: 'Homecoming Concert', date: 'Nov 5', predicted: 2200, capacity: 2000 },
+        { name: 'Tech Symposium', date: 'Nov 12', predicted: 450, capacity: 500 },
+      ];
+      const rows = events.map(e => `
+        <tr class="border-b">
+          <td class="p-2 font-semibold">${e.name}</td>
+          <td class="p-2">${e.date}</td>
+          <td class="p-2 ${e.predicted > e.capacity ? 'text-red-600 font-bold' : ''}">${e.predicted} / ${e.capacity}</td>
+        </tr>`).join('');
+
+      appendMessage('bot', `
+        <p class="font-semibold">🎪 Upcoming Campus Events</p>
+        <p>Latest attendance forecasts and planning tools.</p>
+        <div class="overflow-hidden rounded-xl ring-1 ring-gray-200 mt-2">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-gray-100">
+              <tr><th class="p-2">Event</th><th class="p-2">Date</th><th class="p-2">Predicted / Capacity</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `);
+      showQuickReplies([
+        { text: 'Details for Homecoming Concert', action: 'event details', color: 'purple' },
+        { text: 'Parking Availability', action: 'parking', color: 'purple' },
+        { text: 'Post-Event Feedback', action: 'feedback', color: 'purple' },
+        { text: 'Back to main menu', action: 'main', color: 'gray' }
+      ]);
+    }
+
+    function botResponseEventDetails() {
+      appendMessage('bot', `
+        <p class="font-semibold">🎤 Analytics: Homecoming Concert</p>
+        <ul class="list-disc list-inside mt-2 space-y-2">
+          <li><strong>Predicted Peak Attendance:</strong> 7:30 PM – 9:00 PM</li>
+          <li><strong>Resource Alert:</strong> Over-capacity risk → add a second entry point</li>
+          <li><strong>Staffing:</strong> Increase security staff by 30% during peak</li>
+        </ul>
+      `);
+      showQuickReplies([
+        { text: 'View all events', action: 'campus events', color: 'purple' },
+        { text: 'Back to main menu', action: 'main', color: 'gray' }
+      ]);
+    }
+
+    function botResponseParking() {
+      appendMessage('bot', `
+        <p class="font-semibold">🅿️ Parking Availability: Homecoming Concert</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><strong>Lot A (Near Venue):</strong> 100% full by 6:30 PM.</li>
+          <li><strong>Lot C (Remote):</strong> ~70% full by 7:00 PM.</li>
+          <li><strong>Action:</strong> Redirect traffic to Lot C after 6:15 PM. Shuttle from 6:00 PM.</li>
+        </ul>
+      `);
+      showQuickReplies([
+        { text: 'View event details', action: 'event details', color: 'purple' },
+        { text: 'Back to events menu', action: 'campus events', color: 'purple' }
+      ]);
+    }
+
+    function botResponseFeedback() {
+      appendMessage('bot', `
+        <p class="font-semibold">📝 Post-Event Feedback Analysis: Career Fair</p>
+        <p>Simulated analysis of #CampusCareerFair mentions:</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><strong>Positive (75%):</strong> Diverse employers, helpful volunteers.</li>
+          <li><strong>Negative (25%):</strong> Long wait times at popular booths.</li>
+          <li><strong>Next Time:</strong> Virtual queue for high-demand employers.</li>
+        </ul>
+      `);
+      showQuickReplies([
+        { text: 'View all events', action: 'campus events', color: 'purple' },
+        { text: 'Back to main menu', action: 'main', color: 'gray' }
+      ]);
+    }
+
+    // --- Utils ---
+    function escapeHTML(str) {
+      return str.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+  </script>
+</body>
+</html>
